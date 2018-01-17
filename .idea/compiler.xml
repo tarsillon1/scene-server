@@ -7,12 +7,15 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="canvas" />
+        <module name="scene" />
         <module name="server" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="canvas" target="1.8" />
       <module name="object-server" target="1.5" />
+      <module name="scene" target="1.8" />
+      <module name="scene-server" target="1.5" />
       <module name="server" target="1.7" />
     </bytecodeTargetLevel>
   </component>

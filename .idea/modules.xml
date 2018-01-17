@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/canvas/canvas.iml" filepath="$PROJECT_DIR$/canvas/canvas.iml" />
-      <module fileurl="file://$PROJECT_DIR$/object-server.iml" filepath="$PROJECT_DIR$/object-server.iml" />
+      <module fileurl="file://$PROJECT_DIR$/scene/scene.iml" filepath="$PROJECT_DIR$/scene/scene.iml" />
+      <module fileurl="file://$PROJECT_DIR$/scene-server.iml" filepath="$PROJECT_DIR$/scene-server.iml" />
       <module fileurl="file://$PROJECT_DIR$/server/server.iml" filepath="$PROJECT_DIR$/server/server.iml" />
     </modules>
   </component>
