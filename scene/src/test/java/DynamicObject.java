@@ -1,27 +1,23 @@
 import com.nothardcoded.sceneserver.scene.model.annotation.AsyncSceneObjectProperty;
+import com.nothardcoded.sceneserver.scene.model.annotation.SceneAutowire;
+import com.nothardcoded.sceneserver.scene.model.annotation.ScenePropertyQualifier;
 import com.nothardcoded.sceneserver.scene.model.object.SceneObject;
 import com.nothardcoded.sceneserver.scene.model.property.SceneObjectProperty;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.annotation.Scope;
 
-@Scope(BeanDefinition.SCOPE_PROTOTYPE)
 class DynamicObject extends SceneObject {
   private SceneObjectProperty<String> someOtherVal = new SceneObjectProperty<>();
 
+  @ScenePropertyQualifier("sampleInt2")
   @AsyncSceneObjectProperty(updateTime = 1000)
-  private Integer sampleValue;
+  private SceneObjectProperty<Integer> sampleValue;
 
-  public DynamicObject (Integer integer, String someOtherVal) {
-    sampleValue = integer;
+  public DynamicObject (@ScenePropertyQualifier("someOtherValue2") String someOtherVal) {
     this.someOtherVal.setValue(someOtherVal);
-  }
-
-  public Integer getSampleValue() {
-    return sampleValue;
-  }
-
-  public void setSampleValue(Integer sampleValue) {
-    this.sampleValue = sampleValue;
   }
 
   public SceneObjectProperty<String> getSomeOtherVal() {
@@ -30,5 +26,13 @@ class DynamicObject extends SceneObject {
 
   public void setSomeOtherVal(SceneObjectProperty<String> someOtherVal) {
     this.someOtherVal = someOtherVal;
+  }
+
+  public SceneObjectProperty<Integer> getSampleValue() {
+    return sampleValue;
+  }
+
+  public void setSampleValue(SceneObjectProperty<Integer> sampleValue) {
+    this.sampleValue = sampleValue;
   }
 }

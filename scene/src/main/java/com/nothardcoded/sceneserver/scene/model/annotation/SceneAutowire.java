@@ -1,5 +1,6 @@
 package com.nothardcoded.sceneserver.scene.model.annotation;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.lang.annotation.ElementType;
@@ -10,9 +11,7 @@ import java.lang.annotation.Target;
 /**
  * Created by nick.tarsillo on 1/14/18.
  */
-@Qualifier
-@Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.ANNOTATION_TYPE})
+@Autowired
+@Target({ElementType.CONSTRUCTOR, ElementType.METHOD, ElementType.PARAMETER, ElementType.FIELD, ElementType.ANNOTATION_TYPE})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface ScenePropertyQualifier {
-  String value();
-}
+public @interface SceneAutowire {}

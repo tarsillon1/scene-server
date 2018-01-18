@@ -10,8 +10,7 @@ public class SceneUpdateStrategy {
   private UpdateStrategy<SceneObject> newObject;
   private UpdateStrategy<SceneObject> objectUpdated;
   private UpdateStrategy<SceneObjectProperty> newProperty;
-  private UpdateStrategy<SceneObjectProperty> syncPropertyUpdated;
-  private UpdateStrategy<SceneObjectProperty> asyncPropertyUpdated;
+  private UpdateStrategy<SceneObjectProperty> propertyUpdateStrategy;
 
   public UpdateStrategy<SceneObject> getNewObject() {
     return newObject;
@@ -40,19 +39,11 @@ public class SceneUpdateStrategy {
     this.newProperty = newProperty;
   }
 
-  public UpdateStrategy<SceneObjectProperty> getSyncPropertyUpdated() {
-    return syncPropertyUpdated;
+  public UpdateStrategy<SceneObjectProperty> getPropertyUpdateStrategy() {
+    return propertyUpdateStrategy;
   }
 
-  public void setSyncPropertyUpdated(UpdateStrategy<SceneObjectProperty> syncPropertyUpdated) {
-    this.syncPropertyUpdated = syncPropertyUpdated;
-  }
-
-  public UpdateStrategy<SceneObjectProperty> getAsyncPropertyUpdated() {
-    return asyncPropertyUpdated;
-  }
-
-  public void setAsyncPropertyUpdated(UpdateStrategy<SceneObjectProperty> asyncPropertyUpdated) {
-    this.asyncPropertyUpdated = asyncPropertyUpdated;
+  public void setPropertyUpdateStrategy(UpdateStrategy<SceneObjectProperty> propertyUpdateStrategy) {
+    this.propertyUpdateStrategy = propertyUpdateStrategy;
   }
 }

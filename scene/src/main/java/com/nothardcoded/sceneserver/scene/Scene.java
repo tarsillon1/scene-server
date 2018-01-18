@@ -2,25 +2,29 @@ package com.nothardcoded.sceneserver.scene;
 
 import com.nothardcoded.sceneserver.scene.exception.NotAssignableException;
 import com.nothardcoded.sceneserver.scene.model.annotation.AsyncSceneObjectProperty;
-import com.nothardcoded.sceneserver.scene.model.annotation.SceneInject;
+import com.nothardcoded.sceneserver.scene.model.annotation.ScenePropertyQualifier;
+import com.nothardcoded.sceneserver.scene.model.annotation.SceneRegister;
 import com.nothardcoded.sceneserver.scene.model.listener.SceneListener;
 import com.nothardcoded.sceneserver.scene.model.object.SceneObject;
-import com.nothardcoded.sceneserver.scene.model.property.AsyncSceneObjectPropertyHandler;
 import com.nothardcoded.sceneserver.scene.model.property.SceneObjectProperty;
 import com.nothardcoded.sceneserver.scene.model.property.SceneProperty;
 import com.nothardcoded.sceneserver.scene.model.strategy.SceneUpdateStrategy;
 import com.nothardcoded.sceneserver.scene.model.strategy.SceneUpdateStrategyBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
 import java.lang.reflect.Field;
 import java.util.HashSet;
 import java.util.Set;
@@ -29,36 +33,16 @@ import java.util.Set;
  * Created by nick.tarsillo on 1/10/18.
  */
 @Component
-public class Scene {
+public class Scene implements ApplicationContextAware {
   private static Logger LOG = LoggerFactory.getLogger(Scene.class);
 
-  @Autowired
   private GenericApplicationContext context;
 
   private Set<SceneListener> sceneListeners = new HashSet<>();
   private SceneUpdateStrategy sceneUpdateStrategy;
 
-  public Scene() {
-    SceneUpdateStrategyBuilder strategyBuilder = new SceneUpdateStrategyBuilder();
-    strategyBuilder.sceneListeners(sceneListeners);
-    this.sceneUpdateStrategy = strategyBuilder.build();
-
-    loadContext();
-    beforeInjection();
-    inject();
-  }
-
   public SceneObject createSceneObject(Class clazz) throws NotAssignableException {
-    if (!SceneObject.class.isAssignableFrom(clazz)) {
-      throw new NotAssignableException();
-    }
-
-    if (!context.getBeanFactory().containsBean(clazz.getName())) {
-      BeanDefinitionBuilder builder = BeanDefinitionBuilder.rootBeanDefinition(clazz);
-      builder.setScope(BeanDefinition.SCOPE_PROTOTYPE);
-      DefaultListableBeanFactory factory = (DefaultListableBeanFactory) context.getBeanFactory();
-      factory.registerBeanDefinition(clazz.getName(), builder.getBeanDefinition());
-    }
+    registerBean(clazz);
 
     SceneObject object = (SceneObject) context.getBean(clazz);
     construct(object);
@@ -89,24 +73,70 @@ public class Scene {
     sceneListeners.remove(sceneListener);
   }
 
-  protected void beforeInjection () {}
+  @PostConstruct
+  public void init () {
+    SceneUpdateStrategyBuilder strategyBuilder = new SceneUpdateStrategyBuilder();
+    strategyBuilder.sceneListeners(sceneListeners);
+    this.sceneUpdateStrategy = strategyBuilder.build();
+
+    loadContext();
+    register();
+  }
+
+  @Override
+  public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+    this.context = (GenericApplicationContext) applicationContext;
+    scanForSceneObjects(this.getClass());
+  }
 
   private void loadContext() {
     if (context == null) {
-      context = new GenericApplicationContext();
+      setApplicationContext(new GenericApplicationContext());
+      XmlBeanDefinitionReader xmlReader = new XmlBeanDefinitionReader(context);
+      xmlReader.setValidationMode(XmlBeanDefinitionReader.VALIDATION_XSD);
+      xmlReader.loadBeanDefinitions(new ClassPathResource("applicationContext.xml"));
+      context.refresh();
+      registerSceneProperty(new SceneProperty("sampleInt", new Integer (10)));
+      registerSceneProperty(new SceneProperty("sampleInt2", new Integer (11)));
+      registerSceneProperty(new SceneProperty("sampleInt3", new Integer (12)));
+      registerSceneProperty(new SceneProperty("someOtherValue", "This is before."));
+      registerSceneProperty(new SceneProperty("someOtherValue1", "This is before 1."));
+      registerSceneProperty(new SceneProperty("someOtherValue2", "This is before 2."));
+      context.getBeanFactory().autowireBean(this);
     }
-
-    XmlBeanDefinitionReader xmlReader = new XmlBeanDefinitionReader(context);
-    xmlReader.setValidationMode(XmlBeanDefinitionReader.VALIDATION_XSD);
-    xmlReader.loadBeanDefinitions(new ClassPathResource("applicationContext.xml"));
-    context.refresh();
   }
 
-  private void inject() {
+  private void registerBean (Class clazz) throws NotAssignableException {
+    if (!SceneObject.class.isAssignableFrom(clazz)) {
+      throw new NotAssignableException();
+    }
+
+    if (!context.getBeanFactory().containsBean(clazz.getName())) {
+      BeanDefinitionBuilder builder = BeanDefinitionBuilder.rootBeanDefinition(clazz);
+      builder.setScope(BeanDefinition.SCOPE_PROTOTYPE);
+      DefaultListableBeanFactory factory = (DefaultListableBeanFactory) context.getBeanFactory();
+      factory.registerBeanDefinition(clazz.getName(), builder.getBeanDefinition());
+      scanForSceneObjects(clazz);
+    }
+  }
+
+  private void scanForSceneObjects (Class clazz) {
+    for (Field field : clazz.getDeclaredFields()) {
+      if (SceneObject.class.isAssignableFrom(field.getType())) {
+        try {
+          registerBean(field.getType());
+        } catch (NotAssignableException e) {
+          LOG.error("Could not register scene object bean for class: ", e);
+        }
+      }
+    }
+  }
+
+  private void register() {
     Field[] fields = this.getClass().getDeclaredFields();
     for (Field field : fields) {
-      if (isInjectableField(field)) {
-        injectSceneObjectField(this, field);
+      if (isRegisterField(field)) {
+        registerSceneObjectField(this, field);
       }
     }
   }
@@ -116,27 +146,20 @@ public class Scene {
     for (Field field : fields) {
       if (field.getType().isAssignableFrom(SceneObjectProperty.class)) {
         injectSceneObjectPropertyField(sceneObject, field);
-      } else if (isInjectableField(field)) {
-        injectSceneObjectField(sceneObject, field);
+      } else if (isRegisterField(field)) {
+        registerSceneObjectField(sceneObject, field);
       }
-
-      injectAsyncSceneObjectProperty(sceneObject,field);
     }
   }
 
-  private void injectSceneObjectField(Object object, Field field) {
+  private void registerSceneObjectField(Object object, Field field) {
     field.setAccessible(true);
     try {
       SceneObject sceneObject = (SceneObject) field.get(object);
-      if (sceneObject == null) {
-        sceneObject = createSceneObject(field.getType());
-        field.set(object, sceneObject);
-      } else {
-        construct(sceneObject);
-      }
+      construct(sceneObject);
 
       sceneUpdateStrategy.getNewObject().updated(sceneObject);
-    } catch (NotAssignableException | IllegalAccessException e) {
+    } catch (IllegalAccessException e) {
       LOG.error("Could not inject scene object: ", e);
     }
   }
@@ -150,8 +173,23 @@ public class Scene {
         field.set(object, property);
       }
 
-      if (field.getDeclaredAnnotation(AsyncSceneObjectProperty.class) == null) {
-        property.setUpdateStrategy(sceneUpdateStrategy.getSyncPropertyUpdated());
+      if (field.getDeclaredAnnotation(ScenePropertyQualifier.class) != null) {
+        Object sceneProp = context.getBeanFactory().getBean(
+                field.getDeclaredAnnotation(ScenePropertyQualifier.class).value());
+
+        if (field.getType().isAssignableFrom(sceneProp.getClass())) {
+          property = (SceneObjectProperty) sceneProp;
+          field.set(object, property);
+        } else {
+          property.setValue(sceneProp);
+        }
+      }
+
+      property.addUpdateStrategy(sceneUpdateStrategy.getPropertyUpdateStrategy());
+
+      if (field.getDeclaredAnnotation(AsyncSceneObjectProperty.class) != null) {
+        property.setAsync(true);
+        property.setAsyncUpdateTime(field.getDeclaredAnnotation(AsyncSceneObjectProperty.class).updateTime());
       }
 
       sceneUpdateStrategy.getNewProperty().updated(property);
@@ -160,19 +198,8 @@ public class Scene {
     }
   }
 
-  private void injectAsyncSceneObjectProperty(SceneObject sceneObject, Field field) {
-    AsyncSceneObjectProperty annotation = field.getDeclaredAnnotation(AsyncSceneObjectProperty.class);
-    if (annotation != null) {
-      AsyncSceneObjectPropertyHandler handler = new AsyncSceneObjectPropertyHandler(
-          annotation.updateTime(), sceneUpdateStrategy.getAsyncPropertyUpdated(), sceneObject,
-          field.getName());
-
-      sceneUpdateStrategy.getNewProperty().updated(handler.getProperty());
-    }
-  }
-
-  private boolean isInjectableField (Field field) {
+  private boolean isRegisterField(Field field) {
     return SceneObject.class.isAssignableFrom(field.getType())
-        && field.getDeclaredAnnotation(SceneInject.class) != null;
+        && field.getDeclaredAnnotation(SceneRegister.class) != null;
   }
 }

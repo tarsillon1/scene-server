@@ -4,7 +4,7 @@ import com.nothardcoded.sceneserver.scene.model.listener.SceneListener;
 import com.nothardcoded.sceneserver.scene.model.object.SceneObject;
 import com.nothardcoded.sceneserver.scene.model.property.SceneObjectProperty;
 
-import java.util.Set;
+import java.util.*;
 
 /**
  * Created by nick.tarsillo on 1/13/18.
@@ -21,12 +21,11 @@ public class SceneUpdateStrategyBuilder {
   }
 
   class DefaultUpdateStrategy extends SceneUpdateStrategy {
-    public DefaultUpdateStrategy () {
+    public DefaultUpdateStrategy() {
       setNewObject(new NewObject());
       setObjectUpdated(new UpdateObject());
       setNewProperty(new NewProperty());
-      setSyncPropertyUpdated(new UpdateSyncProperty());
-      setAsyncPropertyUpdated(new UpdateAsyncProperty());
+      setPropertyUpdateStrategy(new UpdateSyncProperty());
     }
 
     class NewObject implements UpdateStrategy<SceneObject> {
@@ -57,19 +56,28 @@ public class SceneUpdateStrategyBuilder {
     }
 
     class UpdateSyncProperty implements UpdateStrategy<SceneObjectProperty> {
-      @Override
-      public void updated(SceneObjectProperty property) {
-        for (SceneListener listener : sceneListeners) {
-          listener.propertyUpdated(property);
-        }
-      }
-    }
+      private Set<SceneObjectProperty> asyncTimerSet = new HashSet<>();
 
-    class UpdateAsyncProperty implements UpdateStrategy<SceneObjectProperty> {
       @Override
       public void updated(SceneObjectProperty property) {
-        for (SceneListener listener : sceneListeners) {
-          listener.propertyUpdated(property);
+        if (property.isAsync() && !asyncTimerSet.contains(property)) {
+          asyncTimerSet.add(property);
+
+          Timer timer = new Timer();
+          timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+              for (SceneListener listener : sceneListeners) {
+                listener.propertyUpdated(property);
+              }
+
+              asyncTimerSet.remove(property);
+            }
+          }, property.getAsyncUpdateTime());
+        } else if (!property.isAsync()) {
+          for (SceneListener listener : sceneListeners) {
+            listener.propertyUpdated(property);
+          }
         }
       }
     }

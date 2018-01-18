@@ -1,5 +1,6 @@
 import com.nothardcoded.sceneserver.scene.Scene;
-import com.nothardcoded.sceneserver.scene.model.annotation.SceneInject;
+import com.nothardcoded.sceneserver.scene.model.annotation.SceneAutowire;
+import com.nothardcoded.sceneserver.scene.model.annotation.SceneRegister;
 import com.nothardcoded.sceneserver.scene.model.listener.SceneListener;
 import com.nothardcoded.sceneserver.scene.model.object.SceneObject;
 import com.nothardcoded.sceneserver.scene.model.property.SceneObjectProperty;
@@ -37,44 +38,41 @@ public class AnnoTest {
   };
 
   @Test
-  public void notStaticTest () {
+  public void notStaticTest () throws InterruptedException {
     BasicConfigurator.configure();
 
-    Set<DynamicScene> test = new HashSet<>();
-    for (int i = 0; i < 10000; i ++) {
+    System.out.println(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
+    for (int i = 0; i < 10; i ++) {
       DynamicScene scene = new DynamicScene();
+      scene.init();
 
-      System.out.println("Before: " + scene.getNotStatic().getSampleValue());
-      System.out.println("Before: " + scene.getNotStatic2().getSampleValue());
+      System.out.println("Before: " + scene.getNotStatic().getSampleValue().getValue());
+      System.out.println("Before: " + scene.getNotStatic2().getSampleValue().getValue());
 
-      scene.getNotStatic().setSampleValue(100);
+      scene.getNotStatic().getSampleValue().setValue(100);
       scene.getNotStatic().getSomeOtherVal().setValue("This is a test.");
 
-      scene.getNotStatic2().setSampleValue(200);
+      scene.getNotStatic2().getSampleValue().setValue(200);
       scene.getNotStatic2().getSomeOtherVal().setValue("This is a test 2.");
-
-      //test.add(scene);
+      Thread.sleep(2000);
+      scene.getNotStatic().getSampleValue().setValue(300);
+      Thread.sleep(2000);
     }
 
-
+    System.gc();
+    Thread.sleep(3000);
+    System.out.println(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
   }
 
   class DynamicScene extends Scene {
-    @SceneInject
+    @SceneRegister
     private DynamicObject notStatic;
-    @SceneInject
+    @SceneRegister
     private DynamicObject notStatic2;
 
-    public DynamicScene () {
-      //registerSceneObject(notStatic);
-      //registerSceneObject(notStatic2);
-    }
-
-    @Override
-    protected void beforeInjection () {
-      registerSceneProperty(new SceneProperty("sampleInt", new Integer (10)));
-      registerSceneProperty(new SceneProperty("someOtherValue", "This is before."));
+    public void init () {
       registerListener(sceneListener);
+      super.init();
     }
 
     public DynamicObject getNotStatic() {
